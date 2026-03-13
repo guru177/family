@@ -9,6 +9,25 @@ const api = axios.create({
   }
 });
 
+// Add a request interceptor to include the JWT token in headers
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('adminToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Auth APIs
+export const adminLogin = (credentials) => api.post('/auth/login', credentials);
+export const adminRegister = (userData) => api.post('/auth/register', userData);
+export const fetchMe = () => api.get('/auth/me');
+
 // Hero Slider APIs
 export const fetchHeroSlides = () => api.get('/hero-slider');
 export const saveHeroSlide = (formData) => api.post('/hero-slider', formData, {

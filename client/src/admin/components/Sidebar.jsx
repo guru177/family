@@ -32,6 +32,7 @@ const Sidebar = () => {
     const handleLogout = () => {
         localStorage.removeItem("isAdminLoggedIn");
         localStorage.removeItem("adminUsername");
+        localStorage.removeItem("adminToken");
         navigate("/admin");
     };
 

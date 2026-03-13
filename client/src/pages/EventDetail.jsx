@@ -183,7 +183,6 @@ const EventDetail = () => {
             </div>
 
          </div>
-         <CallToAction />
       </div>
    );
 };

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Lock, User, LogIn, ShieldCheck } from 'lucide-react';
+import { adminLogin } from '../../services/api';
 
 const AdminLogin = () => {
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -13,33 +15,24 @@ const AdminLogin = () => {
         setError('');
     };
 
-    // ── Hardcoded credentials (swap with API call later) ──
-    const ADMIN_CREDENTIALS = {
-        username: 'admin',
-        password: 'admin123',
-    };
-
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.username) {
-            setError('Username field cannot be empty');
-            return;
-        }
-        if (!formData.password) {
-            setError('Password field cannot be empty');
+        if (!formData.username || !formData.password) {
+            setError('Both fields are required');
             return;
         }
 
-        // Check credentials
-        if (
-            formData.username === ADMIN_CREDENTIALS.username &&
-            formData.password === ADMIN_CREDENTIALS.password
-        ) {
+        setIsLoading(true);
+        try {
+            const res = await adminLogin(formData);
+            localStorage.setItem('adminToken', res.data.token);
             localStorage.setItem('isAdminLoggedIn', 'true');
-            localStorage.setItem('adminUsername', formData.username);
+            localStorage.setItem('adminUsername', res.data.username);
             window.location.href = '/admin/dashboard';
-        } else {
-            setError('Wrong Password!!');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Login failed');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -161,7 +154,9 @@ const AdminLogin = () => {
                             style={{ color: '#0f3d2e' }}>
                             WELCOME BACK
                         </h1>
-                        <p className="text-gray-400 text-sm mt-1">Give your best report today!</p>
+                        <p className="text-gray-400 text-sm mt-1">
+                            Give your best report today!
+                        </p>
                     </div>
 
                     {/* Form */}
@@ -200,23 +195,20 @@ const AdminLogin = () => {
                             </button>
                         </div>
 
-                        <p className="text-xs text-right" style={{ color: '#1a7a55' }}>
-                            <span className="cursor-pointer hover:underline font-semibold">Forgot Password?</span>
-                        </p>
-
                         {/* Login Button */}
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.97 }}
                             type="submit"
-                            className="mt-2 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white text-sm font-bold uppercase tracking-widest shadow-lg transition-all"
+                            disabled={isLoading}
+                            className={`mt-2 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white text-sm font-bold uppercase tracking-widest shadow-lg transition-all ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
                             style={{
                                 background: 'linear-gradient(135deg, #0f3d2e 0%, #1a7a55 100%)',
                                 boxShadow: '0 4px 20px rgba(15,61,46,0.35)',
                             }}
                         >
                             <LogIn size={17} />
-                            Login to My Account
+                            {isLoading ? 'Authenticating...' : 'Login to My Account'}
                         </motion.button>
 
                     </form>

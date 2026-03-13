@@ -8,9 +8,11 @@ const {
   reorderSlides
 } = require('../controllers/heroSliderController');
 
+const { protect } = require('../middleware/authMiddleware');
+
 router.get('/', getHeroSlides);
-router.post('/', upload.single('image'), addOrUpdateSlide);
-router.put('/reorder', reorderSlides);
-router.delete('/:id', deleteSlide);
+router.post('/', protect, upload.single('image'), addOrUpdateSlide);
+router.put('/reorder', protect, reorderSlides);
+router.delete('/:id', protect, deleteSlide);
 
 module.exports = router;

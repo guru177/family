@@ -6,8 +6,10 @@ const {
   deleteBannerMessage 
 } = require('../controllers/scrollingBannerController');
 
+const { protect } = require('../middleware/authMiddleware');
+
 router.get('/', getBannerMessages);
-router.post('/', addBannerMessage);
-router.delete('/:id', deleteBannerMessage);
+router.post('/', protect, addBannerMessage);
+router.delete('/:id', protect, deleteBannerMessage);
 
 module.exports = router;

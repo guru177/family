@@ -9,10 +9,12 @@ const {
 } = require('../controllers/eventController');
 const upload = require('../middleware/eventUpload');
 
+const { protect } = require('../middleware/authMiddleware');
+
 router.get('/', getEvents);
 router.get('/slug/:slug', getEventBySlug);
-router.post('/', upload.single('image'), saveEvent);
-router.delete('/:id', deleteEvent);
-router.patch('/:id/status', updateStatus);
+router.post('/', protect, upload.single('image'), saveEvent);
+router.delete('/:id', protect, deleteEvent);
+router.patch('/:id/status', protect, updateStatus);
 
 module.exports = router;

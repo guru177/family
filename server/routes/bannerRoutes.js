@@ -7,8 +7,10 @@ const {
   deleteBanner 
 } = require('../controllers/bannerController');
 
+const { protect } = require('../middleware/authMiddleware');
+
 router.get('/', getBanners);
-router.post('/', upload.single('image'), addBanner);
-router.delete('/:id', deleteBanner);
+router.post('/', protect, upload.single('image'), addBanner);
+router.delete('/:id', protect, deleteBanner);
 
 module.exports = router;

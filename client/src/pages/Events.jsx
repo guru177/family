@@ -36,7 +36,7 @@ const Events = () => {
   };
 
   return (
-    <div className="w-full overflow-x-hidden bg-[#050505] min-h-screen flex flex-col">
+    <div className="w-full overflow-x-hidden bg-[#ffffff] min-h-screen flex flex-col">
       {/* Hero Section */}
       <HeroSection
         badgeText="Community Gatherings"
