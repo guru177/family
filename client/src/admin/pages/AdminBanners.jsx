@@ -1,42 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Image as ImageIcon, Plus, Trash2, Save, Play, Settings } from 'lucide-react';
+import { Image as ImageIcon, Plus, Trash2, Save, Play, Settings, AlertCircle } from 'lucide-react';
 import ImageBanner from '../../components/imagebanner/ImageBanner';
-import banner from '../../assets/img/banner.jpg';
+import { fetchBanners, createBanner, deleteBanner } from '../../services/api';
 
 const AdminBanners = () => {
-  const [images, setImages] = useState([banner]);
+  const [images, setImages] = useState([]);
+  const [banners, setBanners] = useState([]); // Store full banner objects from DB
   const [autoPlayInterval, setAutoPlayInterval] = useState(5000);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleFileUpload = (e) => {
+  useEffect(() => {
+    loadBanners();
+  }, []);
+
+  const loadBanners = async () => {
+    try {
+      const { data } = await fetchBanners();
+      setBanners(data);
+      // Map to just src for the preview component
+      setImages(data.map(b => b.src));
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error loading banners:', err);
+      setIsLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
       if (file.type.startsWith('image/')) {
-        const previewUrl = URL.createObjectURL(file);
-        setImages([...images, previewUrl]);
+        setIsSaving(true);
+        try {
+          const formData = new FormData();
+          formData.append('image', file);
+          await createBanner(formData);
+          await loadBanners(); // Refresh list
+        } catch (err) {
+          console.error('Error uploading banner:', err);
+          alert('Error uploading banner');
+        } finally {
+          setIsSaving(false);
+        }
       } else {
         alert('Please select an image file (PNG, JPG, etc.)');
       }
     }
   };
 
-  const handleRemoveImage = (index) => {
-    const newImages = images.filter((_, i) => i !== index);
-    // Revoke object URL if it was created locally to avoid memory leaks
-    if (images[index].startsWith('blob:')) {
-      URL.revokeObjectURL(images[index]);
+  const handleRemoveImage = async (id) => {
+    if (!window.confirm('Are you sure you want to remove this banner?')) return;
+    
+    try {
+      await deleteBanner(id);
+      await loadBanners();
+    } catch (err) {
+      console.error('Error removing banner:', err);
+      alert('Error removing banner');
     }
-    setImages(newImages);
-  };
-
-  const handleSave = () => {
-    setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSaving(false);
-      alert('Banner settings saved successfully! (Frontend only demo)');
-    }, 1000);
   };
 
   return (
@@ -47,18 +70,6 @@ const AdminBanners = () => {
           <h1 className="text-3xl font-extrabold text-slate-800">Banner Management</h1>
           <p className="text-slate-400 mt-1 text-sm">Upload homepage banners and customize rotation settings</p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0f3d2e] text-white font-bold hover:bg-[#1a6348] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/10"
-        >
-          {isSaving ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <Save size={18} />
-          )}
-          {isSaving ? 'Saving...' : 'Save Changes'}
-        </button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -83,6 +94,17 @@ const AdminBanners = () => {
                 <div className="flex items-center gap-1.5 px-3 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs shrink-0">
                   <Play size={14} /> {(autoPlayInterval / 1000).toFixed(1)}s
                 </div>
+              </div>
+            </div>
+
+            {/* Resolution Note */}
+            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
+              <AlertCircle className="text-amber-600 shrink-0" size={20} />
+              <div>
+                <p className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">Upload Guide</p>
+                <p className="text-[11px] text-amber-800/80 font-medium leading-relaxed">
+                  For optimal display, please use images with a resolution of <span className="font-bold text-amber-900">1750 × 600</span> pixels.
+                </p>
               </div>
             </div>
           </div>
@@ -117,24 +139,29 @@ const AdminBanners = () => {
             </div>
 
             <div className="space-y-3 mt-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {images.map((img, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 group">
+              {isLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-4">
+                  <div className="w-8 h-8 border-3 border-emerald-100 border-t-emerald-600 rounded-full animate-spin" />
+                  <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Loading...</p>
+                </div>
+              ) : banners.map((img, idx) => (
+                <div key={img._id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 group">
                   <div className="w-16 h-10 rounded-lg overflow-hidden shrink-0 bg-slate-200">
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    <img src={`http://localhost:5000${img.src}`} alt="" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Slide {idx + 1}</p>
-                    <p className="text-sm font-bold text-slate-700 truncate">{img.split('/').pop()}</p>
+                    <p className="text-sm font-bold text-slate-700 truncate">{img.src.split('/').pop()}</p>
                   </div>
                   <button
-                    onClick={() => handleRemoveImage(idx)}
+                    onClick={() => handleRemoveImage(img._id)}
                     className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
               ))}
-              {images.length === 0 && (
+              {!isLoading && banners.length === 0 && (
                 <div className="text-center py-8 text-slate-300">
                   <ImageIcon size={32} className="mx-auto mb-2 opacity-20" />
                   <p className="text-sm font-medium">No images added</p>
@@ -164,7 +191,7 @@ const AdminBanners = () => {
             <div className="mt-6 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
                <p className="text-xs text-emerald-800 font-medium leading-relaxed">
                  <span className="font-bold">Note:</span> This preview uses the actual `ImageBanner` component from your website. 
-                 Changes made here will reflect instantly in the preview, but will only be applied to the website after you click "Save Changes".
+                 Changes reflect instantly as you upload or remove banners.
                </p>
             </div>
           </div>

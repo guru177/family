@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import banner from '../../assets/img/banner.jpg';
 
-const ImageBanner = ({ images = [banner, banner, banner], autoPlayInterval = 5000 }) => {
+const ImageBanner = ({ images: pImages, autoPlayInterval = 5000 }) => {
+  const images = (pImages && pImages.length > 0) ? pImages : [banner, banner, banner];
   const [bannerIndex, setBannerIndex] = useState(0);
 
   useEffect(() => {
+    if (images.length === 0) return;
+
     const bannerTimer = setInterval(() => {
       setBannerIndex((prev) => (prev + 1) % images.length);
     }, autoPlayInterval);
@@ -27,16 +30,18 @@ const ImageBanner = ({ images = [banner, banner, banner], autoPlayInterval = 500
         <div className="absolute inset-0 bg-[#0a1910]/10 z-20 mix-blend-overlay group-hover:bg-transparent transition-colors duration-700 pointer-events-none" />
 
         <AnimatePresence>
-          <motion.img
-            key={bannerIndex}
-            src={images[bannerIndex]}
-            alt={`Banner ${bannerIndex + 1}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1 }}
-            className="absolute inset-0 w-full h-full object-cover md:object-cover object-center"
-          />
+          {images[bannerIndex] && (
+            <motion.img
+              key={bannerIndex}
+              src={images[bannerIndex].startsWith('/uploads') ? `http://localhost:5000${images[bannerIndex]}` : images[bannerIndex]}
+              alt={`Banner ${bannerIndex + 1}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1 }}
+              className="absolute inset-0 w-full h-full object-cover md:object-cover object-center"
+            />
+          )}
         </AnimatePresence>
 
         {/* Controllers */}

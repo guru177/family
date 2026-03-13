@@ -7,7 +7,14 @@ import bg2 from '../../assets/img/hero2.jpg';
 import bg3 from '../../assets/img/hero3.jpg';
 import banner from '../../assets/img/banner.jpg';
 
-const defaultImages = [bg1, banner, bg2, bg3, banner, bg1];
+const defaultImages = [
+  { src: bg1, alt: "Family Reunion" },
+  { src: banner, alt: "Annual Meetup" },
+  { src: bg2, alt: "Community Project" },
+  { src: bg3, alt: "Heritage Celebration" },
+  { src: banner, alt: "Holiday Gala" },
+  { src: bg1, alt: "Summer Picnic" }
+];
 
 const CommunityGallery = ({ setSelectedImage, images = defaultImages }) => {
   return (
@@ -21,7 +28,7 @@ const CommunityGallery = ({ setSelectedImage, images = defaultImages }) => {
 
       {/* Desktop Layout - Clean 3-Column Grid */}
       <div className="hidden md:grid grid-cols-3 gap-6">
-        {images.map((item, i) => (
+        {images.slice(0, 6).map((item, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, scale: 0.9 }}
@@ -34,7 +41,11 @@ const CommunityGallery = ({ setSelectedImage, images = defaultImages }) => {
             <div className="absolute inset-0 bg-[#0a1910]/40 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
               <span className="text-white font-bold tracking-widest uppercase text-xs drop-shadow-md bg-white/10 px-6 py-3 rounded-full border border-white/30 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">View Memory</span>
             </div>
-            <img src={item.src} alt={item.alt || `Gallery ${i}`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+            <img 
+              src={item.src.startsWith('http') || item.src.startsWith('blob') || item.src.startsWith('/uploads') ? (item.src.startsWith('/uploads') ? `http://localhost:5000${item.src}` : item.src) : item.src} 
+              alt={item.alt || `Gallery ${i}`} 
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+            />
           </motion.div>
         ))}
       </div>
@@ -54,7 +65,11 @@ const CommunityGallery = ({ setSelectedImage, images = defaultImages }) => {
             <div className="absolute inset-0 bg-[#0a1910]/20 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
               <span className="text-white font-bold tracking-widest uppercase text-xs drop-shadow-md bg-white/10 px-4 py-2 rounded-full border border-white/20">View</span>
             </div>
-            <img src={item.src} alt={item.alt || `Mobile Gallery ${i}`} className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105 block" />
+            <img 
+              src={item.src.startsWith('http') || item.src.startsWith('blob') || item.src.startsWith('/uploads') ? (item.src.startsWith('/uploads') ? `http://localhost:5000${item.src}` : item.src) : item.src} 
+              alt={item.alt || `Mobile Gallery ${i}`} 
+              className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105 block" 
+            />
           </motion.div>
         ))}
       </div>

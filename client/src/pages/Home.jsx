@@ -35,10 +35,29 @@ import bg3 from '../assets/img/hero3.jpg';
 
 // sliderData moved to HeroSlider
 import banner from '../assets/img/banner.jpg';
+import { fetchGalleryItems, fetchBanners } from '../services/api';
 import CommunityGallery from '../components/gallery/CommunityGallery';
 
 const Home = () => {
   const [selectedImage, setSelectedImage] = useState(null);
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [banners, setBanners] = useState([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [galleryRes, bannersRes] = await Promise.all([
+          fetchGalleryItems(),
+          fetchBanners()
+        ]);
+        setGalleryItems(galleryRes.data);
+        setBanners(bannersRes.data.map(b => b.src));
+      } catch (err) {
+        console.error('Error fetching home data:', err);
+      }
+    };
+    loadData();
+  }, []);
 
   return (
     <div className="w-full overflow-x-hidden bg-[#050505]">
@@ -201,13 +220,16 @@ const Home = () => {
           </section>
 
           {/* Full Width Image Banner Component */}
-          <ImageBanner />
+          <ImageBanner images={banners.length > 0 ? banners : undefined} />
 
           {/* Upcoming Events Component */}
           <UpcomingEvents />
 
           {/* Community Gallery Component */}
-          <CommunityGallery setSelectedImage={setSelectedImage} />
+          <CommunityGallery 
+            images={galleryItems.length > 0 ? galleryItems : undefined} 
+            setSelectedImage={setSelectedImage} 
+          />
 
           {/* --- NEW SECTION: Donation / Support --- */}
           <section className="mb-32 px-4 md:px-0 max-w-9xl mx-auto">
@@ -345,7 +367,7 @@ const Home = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <img
-                src={selectedImage.src}
+                src={selectedImage.src.startsWith('http') || selectedImage.src.startsWith('blob') || selectedImage.src.startsWith('/uploads') ? (selectedImage.src.startsWith('/uploads') ? `http://localhost:5000${selectedImage.src}` : selectedImage.src) : selectedImage.src}
                 alt={selectedImage.alt}
                 className="w-full h-full object-contain"
                 style={{ maxHeight: 'calc(85vh - 80px)' }}
