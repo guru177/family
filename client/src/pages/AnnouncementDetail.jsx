@@ -3,26 +3,32 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Clock, Share2, Printer, Bookmark, AlertCircle } from 'lucide-react';
 import CallToAction from '../components/layout/CallToAction';
-
-import bg3 from '../assets/img/hero3.jpg';
+import { fetchAnnouncementBySlug } from '../services/api';
 
 const AnnouncementDetail = () => {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const resolveImage = (img) => {
+    if (!img) return null;
+    if (typeof img === 'string' && img.startsWith('/uploads')) return `http://localhost:5000${img}`;
+    return img;
+  };
+
   useEffect(() => {
-    // Try to get from localStorage
-    const saved = localStorage.getItem('admin_announcements');
-    if (saved) {
-      const announcements = JSON.parse(saved);
-      const found = announcements.find(a => a.id === parseInt(id) || a.id === id);
-      if (found) {
-        setArticle(found);
+    const loadArticle = async () => {
+      try {
+        const res = await fetchAnnouncementBySlug(slug);
+        setArticle(res.data);
+      } catch (err) {
+        console.error('Error fetching article:', err);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
-  }, [id]);
+    };
+    loadArticle();
+  }, [slug]);
 
   if (loading) {
     return <div className="min-h-screen bg-[#f8fdf9] flex items-center justify-center pt-32">
@@ -155,7 +161,7 @@ const AnnouncementDetail = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="w-full aspect-video md:aspect-[21/9] rounded-xl md:rounded-3xl overflow-hidden mb-12 shadow-xl border border-[#050505]/5"
           >
-            <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
+            <img src={resolveImage(article.image)} alt={article.title} className="w-full h-full object-cover" />
           </motion.div>
         )}
 

@@ -42,4 +42,21 @@ export const createBanner = (formData) => api.post('/banners', formData, {
 });
 export const deleteBanner = (id) => api.delete(`/banners/${id}`);
 
+// Announcement APIs
+export const fetchAnnouncements = () => api.get('/announcements');
+export const fetchAnnouncementById = (id) => api.get(`/announcements/${id}`);
+export const fetchAnnouncementBySlug = (slug) => api.get(`/announcements/slug/${slug}`);
+export const saveAnnouncement = (formData) => api.post('/announcements', formData, {
+  headers: {
+    'Content-Type': 'multipart/form-data'
+  }
+});
+export const deleteAnnouncement = (id) => api.delete(`/announcements/${id}`);
+export const updateAnnouncementStatus = (id, status) => api.patch(`/announcements/${id}/status`, { status });
+
+// Scrolling Banner APIs (Text messages)
+export const fetchScrollingMessages = () => api.get('/scrolling-banner');
+export const addScrollingMessage = (message) => api.post('/scrolling-banner', { message });
+export const deleteScrollingMessage = (id) => api.delete(`/scrolling-banner/${id}`);
+
 export default api;

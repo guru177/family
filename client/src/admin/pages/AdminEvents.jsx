@@ -174,10 +174,13 @@ const EventModal = ({ event, onClose, onSave }) => {
                         </div>
                         <div>
                             <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Category</label>
-                            <select value={form.category} onChange={(e) => set("category", e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-emerald-400 transition-colors appearance-none">
-                                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                            </select>
+                            <input
+                                type="text"
+                                value={form.category}
+                                onChange={(e) => set("category", e.target.value)}
+                                placeholder="Category (e.g. Reunion)"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-emerald-400 transition-colors"
+                            />
                         </div>
                     </div>
 
@@ -224,11 +227,11 @@ const EventModal = ({ event, onClose, onSave }) => {
                                                             const ctx = canvas.getContext('2d');
                                                             ctx.drawImage(img, 0, 0);
                                                             canvas.toBlob((blob) => {
-                                                                const readerWebp = new FileReader();
-                                                                readerWebp.onloadend = () => {
-                                                                    resolve(readerWebp.result);
-                                                                };
-                                                                readerWebp.readAsDataURL(blob);
+                                                                const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                                                                    type: 'image/webp',
+                                                                    lastModified: Date.now()
+                                                                });
+                                                                resolve(webpFile);
                                                             }, 'image/webp', 0.8);
                                                         };
                                                         img.onerror = (err) => reject(err);
@@ -238,8 +241,9 @@ const EventModal = ({ event, onClose, onSave }) => {
                                             };
 
                                             try {
-                                                const webpBase64 = await convertToWebP(file);
-                                                set("image", webpBase64);
+                                                const webpFile = await convertToWebP(file);
+                                                const imageUrl = URL.createObjectURL(webpFile);
+                                                set("image", imageUrl);
                                             } catch (err) {
                                                 console.error('Conversion error:', err);
                                                 alert('Error processing image');

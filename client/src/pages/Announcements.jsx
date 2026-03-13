@@ -47,18 +47,24 @@ const DEFAULT_ANNOUNCEMENTS = [
   }
 ];
 
+import { fetchAnnouncements } from '../services/api';
+
 const Announcements = () => {
     const [announcements, setAnnouncements] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const saved = localStorage.getItem('admin_announcements');
-        if (saved) {
-            const data = JSON.parse(saved);
-            // Only show Published ones on the public page
-            setAnnouncements(data.filter(a => a.status === 'Published'));
-        } else {
-            setAnnouncements(DEFAULT_ANNOUNCEMENTS);
-        }
+        const loadAnnouncements = async () => {
+          try {
+            const res = await fetchAnnouncements();
+            setAnnouncements(res.data.filter(a => a.status === 'Published'));
+          } catch (err) {
+            console.error('Error fetching announcements:', err);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        loadAnnouncements();
     }, []);
 
   return (
@@ -87,10 +93,15 @@ const Announcements = () => {
             </h2>
           </div>
 
-          {announcements.length > 0 ? (
+          {isLoading ? (
+            <div className="py-20 flex flex-col items-center justify-center">
+                <div className="w-12 h-12 border-4 border-[#146c43]/20 border-t-[#146c43] rounded-full animate-spin mb-4" />
+                <p className="text-[#050505]/40 font-bold uppercase tracking-widest text-xs">Curating family stories...</p>
+            </div>
+          ) : announcements.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
                 {announcements.map((news, index) => (
-                <AnnouncementCard key={news.id} news={news} index={index} />
+                <AnnouncementCard key={news._id} news={news} index={index} />
                 ))}
             </div>
           ) : (

@@ -7,9 +7,15 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/* ── localStorage keys ── */
-const LS_ANNOUNCEMENTS = "admin_announcements";
-const LS_BANNER = "admin_scrolling_banner";
+import { 
+    fetchAnnouncements, 
+    saveAnnouncement, 
+    deleteAnnouncement, 
+    updateAnnouncementStatus,
+    fetchScrollingMessages,
+    addScrollingMessage,
+    deleteScrollingMessage
+} from "../../services/api";
 
 const CATEGORIES = ["Community Support", "Education", "Virtual Event", "Heritage"];
 
@@ -43,15 +49,10 @@ const INITIAL_BANNER = [
 
 const AdminAnnouncements = () => {
     // --- State ---
-    const [announcements, setAnnouncements] = useState(() => {
-        const saved = localStorage.getItem(LS_ANNOUNCEMENTS);
-        return saved ? JSON.parse(saved) : INITIAL_ANNOUNCEMENTS;
-    });
-
-    const [bannerMessages, setBannerMessages] = useState(() => {
-        const saved = localStorage.getItem(LS_BANNER);
-        return saved ? JSON.parse(saved) : INITIAL_BANNER;
-    });
+    const [announcements, setAnnouncements] = useState([]);
+    const [bannerMessages, setBannerMessages] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
@@ -74,12 +75,30 @@ const AdminAnnouncements = () => {
 
     // --- Persistence ---
     useEffect(() => {
-        localStorage.setItem(LS_ANNOUNCEMENTS, JSON.stringify(announcements));
-    }, [announcements]);
+        loadData();
+    }, []);
 
-    useEffect(() => {
-        localStorage.setItem(LS_BANNER, JSON.stringify(bannerMessages));
-    }, [bannerMessages]);
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const [annRes, bannerRes] = await Promise.all([
+                fetchAnnouncements(),
+                fetchScrollingMessages()
+            ]);
+            setAnnouncements(annRes.data);
+            setBannerMessages(bannerRes.data);
+        } catch (err) {
+            console.error('Error loading data:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const resolveImage = (img) => {
+        if (!img) return null;
+        if (typeof img === 'string' && img.startsWith('/uploads')) return `http://localhost:5000${img}`;
+        return img;
+    };
 
     // --- Handlers ---
     const handleOpenModal = (item = null) => {
@@ -102,38 +121,66 @@ const AdminAnnouncements = () => {
         setIsModalOpen(true);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!formData.title.trim()) return;
 
-        // Cleanup empty blocks
-        const cleanedContent = formData.content.filter(b => {
-            if (b.type === 'list') return b.value.some(v => v.trim());
-            return b.value.trim();
-        });
+        setIsSaving(true);
+        try {
+            const cleanedContent = formData.content.filter(b => {
+                if (b.type === 'list') return b.value.some(v => v.trim());
+                return b.value.trim();
+            });
 
-        const submission = { ...formData, content: cleanedContent };
+            const formDataToSubmit = new FormData();
+            if (editingItem && editingItem._id) {
+                formDataToSubmit.append('id', editingItem._id);
+            }
+            
+            formDataToSubmit.append('title', formData.title);
+            formDataToSubmit.append('category', formData.category);
+            formDataToSubmit.append('author', formData.author);
+            formDataToSubmit.append('readTime', formData.readTime);
+            formDataToSubmit.append('excerpt', formData.excerpt);
+            formDataToSubmit.append('content', JSON.stringify(cleanedContent));
+            formDataToSubmit.append('status', formData.status);
+            formDataToSubmit.append('date', formData.date || new Date().toISOString().split('T')[0]);
 
-        if (editingItem) {
-            setAnnouncements(prev => prev.map(a => a.id === editingItem.id ? { ...submission, id: a.id, date: a.date || new Date().toISOString().split('T')[0] } : a));
-        } else {
-            const newItem = {
-                ...submission,
-                id: Date.now(),
-                date: new Date().toISOString().split('T')[0],
-            };
-            setAnnouncements(prev => [newItem, ...prev]);
+            if (formData.file) {
+                formDataToSubmit.append('image', formData.file);
+            } else if (typeof formData.image === 'string' && !formData.image.startsWith('blob:')) {
+                formDataToSubmit.append('image', formData.image);
+            }
+
+            await saveAnnouncement(formDataToSubmit);
+            await loadData();
+            setIsModalOpen(false);
+            alert('Announcement preserved dynamically!');
+        } catch (err) {
+            console.error('Save error:', err);
+            alert('Error preserving announcement');
+        } finally {
+            setIsSaving(false);
         }
-        setIsModalOpen(false);
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
         if (window.confirm("Are you sure you want to delete this announcement?")) {
-            setAnnouncements(prev => prev.filter(a => a.id !== id));
+            try {
+                await deleteAnnouncement(id);
+                setAnnouncements(prev => prev.filter(a => a._id !== id));
+            } catch (err) {
+                console.error('Delete error:', err);
+            }
         }
     };
 
-    const handleStatusUpdate = (id, newStatus) => {
-        setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
+    const handleStatusUpdate = async (id, newStatus) => {
+        try {
+            await updateAnnouncementStatus(id, newStatus);
+            setAnnouncements(prev => prev.map(a => a._id === id ? { ...a, status: newStatus } : a));
+        } catch (err) {
+            console.error('Status update error:', err);
+        }
     };
 
     const convertToWebP = (file) => {
@@ -150,11 +197,11 @@ const AdminAnnouncements = () => {
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0);
                     canvas.toBlob((blob) => {
-                        const readerWebp = new FileReader();
-                        readerWebp.onloadend = () => {
-                            resolve(readerWebp.result);
-                        };
-                        readerWebp.readAsDataURL(blob);
+                        const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                            type: 'image/webp',
+                            lastModified: Date.now()
+                        });
+                        resolve(webpFile);
                     }, 'image/webp', 0.8);
                 };
                 img.onerror = (err) => reject(err);
@@ -167,8 +214,9 @@ const AdminAnnouncements = () => {
         const file = e.target.files[0];
         if (file && file.type.startsWith('image/')) {
             try {
-                const webpBase64 = await convertToWebP(file);
-                setFormData(prev => ({ ...prev, image: webpBase64 }));
+                const webpFile = await convertToWebP(file);
+                const imageUrl = URL.createObjectURL(webpFile);
+                setFormData(prev => ({ ...prev, image: imageUrl, file: webpFile }));
             } catch (err) {
                 console.error('Conversion error:', err);
                 alert('Error processing image');
@@ -207,19 +255,29 @@ const AdminAnnouncements = () => {
 
     // Banner Handlers
     const [newBannerMsg, setNewBannerMsg] = useState("");
-    const handleAddBanner = () => {
+    const handleAddBanner = async () => {
         if (!newBannerMsg.trim()) return;
-        setBannerMessages(prev => [...prev, newBannerMsg.trim()]);
-        setNewBannerMsg("");
+        try {
+            await addScrollingMessage(newBannerMsg.trim());
+            setNewBannerMsg("");
+            loadData();
+        } catch (err) {
+            console.error('Error adding banner:', err);
+        }
     };
 
-    const handleRemoveBanner = (index) => {
-        setBannerMessages(prev => prev.filter((_, i) => i !== index));
+    const handleRemoveBanner = async (id) => {
+        try {
+            await deleteScrollingMessage(id);
+            loadData();
+        } catch (err) {
+            console.error('Error removing banner:', err);
+        }
     };
 
     // --- Filtering ---
     const filteredAnnouncements = announcements.filter(a => {
-        const matchesSearch = a.title.toLowerCase().includes(search.toLowerCase()) || a.author.toLowerCase().includes(search.toLowerCase());
+        const matchesSearch = (a.title || "").toLowerCase().includes(search.toLowerCase()) || (a.author || "").toLowerCase().includes(search.toLowerCase());
         const matchesStatus = statusFilter === "All" || a.status === statusFilter;
         const matchesCategory = categoryFilter === "All" || a.category === categoryFilter;
         return matchesSearch && matchesStatus && matchesCategory;
@@ -279,14 +337,16 @@ const AdminAnnouncements = () => {
                             />
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
-                            <select
-                                value={categoryFilter}
-                                onChange={(e) => setCategoryFilter(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-600 outline-none focus:border-[#146c43] transition-all cursor-pointer"
-                            >
-                                <option value="All">All Categories</option>
-                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                            <div className="relative group">
+                                <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#146c43] transition-colors" size={16} />
+                                <input
+                                    type="text"
+                                    placeholder="Filter by category..."
+                                    value={categoryFilter === "All" ? "" : categoryFilter}
+                                    onChange={(e) => setCategoryFilter(e.target.value || "All")}
+                                    className="bg-white border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-sm font-bold text-slate-600 outline-none focus:border-[#146c43] transition-all"
+                                />
+                            </div>
                             <div className="flex items-center gap-1 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
                                 {["All", "Published", "Draft", "Hidden"].map(status => (
                                     <button
@@ -304,9 +364,14 @@ const AdminAnnouncements = () => {
                     {/* Announcements Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <AnimatePresence>
-                            {filteredAnnouncements.map((item) => (
+                            {isLoading ? (
+                                <div className="col-span-full py-20 flex flex-col items-center justify-center">
+                                    <div className="w-10 h-10 border-4 border-[#146c43]/20 border-t-[#146c43] rounded-full animate-spin mb-4" />
+                                    <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Loading Communications...</p>
+                                </div>
+                            ) : filteredAnnouncements.map((item) => (
                                 <motion.div
-                                    key={item.id}
+                                    key={item._id}
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95 }}
@@ -315,7 +380,7 @@ const AdminAnnouncements = () => {
                                     {/* Image Preview */}
                                     <div className="aspect-[16/9] relative bg-slate-100 overflow-hidden">
                                         {item.image ? (
-                                            <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                            <img src={resolveImage(item.image)} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-slate-300">
                                                 <FileText size={48} />
@@ -359,7 +424,7 @@ const AdminAnnouncements = () => {
                                                     <Pencil size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(item.id)}
+                                                    onClick={() => handleDelete(item._id)}
                                                     className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                                                     title="Delete Announcement"
                                                 >
@@ -368,21 +433,21 @@ const AdminAnnouncements = () => {
                                             </div>
                                             <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
                                                 <button
-                                                    onClick={() => handleStatusUpdate(item.id, "Published")}
+                                                    onClick={() => handleStatusUpdate(item._id, "Published")}
                                                     className={`p-2 rounded-lg transition-all ${item.status === "Published" ? "bg-white text-[#146c43] shadow-sm" : "text-slate-300 hover:text-slate-500"}`}
                                                     title="Set as Published"
                                                 >
                                                     <CheckCircle2 size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleStatusUpdate(item.id, "Draft")}
+                                                    onClick={() => handleStatusUpdate(item._id, "Draft")}
                                                     className={`p-2 rounded-lg transition-all ${item.status === "Draft" ? "bg-white text-orange-500 shadow-sm" : "text-slate-300 hover:text-slate-500"}`}
                                                     title="Set as Draft"
                                                 >
                                                     <Clock size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleStatusUpdate(item.id, "Hidden")}
+                                                    onClick={() => handleStatusUpdate(item._id, "Hidden")}
                                                     className={`p-2 rounded-lg transition-all ${item.status === "Hidden" ? "bg-white text-slate-600 shadow-sm" : "text-slate-300 hover:text-slate-500"}`}
                                                     title="Hide Announcement"
                                                 >
@@ -448,9 +513,9 @@ const AdminAnnouncements = () => {
                                         <div className="text-slate-300 cursor-grab active:cursor-grabbing">
                                             <GripVertical size={18} />
                                         </div>
-                                        <p className="flex-1 text-slate-700 font-semibold text-sm">{msg}</p>
+                                        <p className="flex-1 text-slate-700 font-semibold text-sm">{msg.message}</p>
                                         <button
-                                            onClick={() => handleRemoveBanner(index)}
+                                            onClick={() => handleRemoveBanner(msg._id)}
                                             className="opacity-0 group-hover:opacity-100 p-2 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-red-500 transition-all shadow-sm"
                                         >
                                             <Trash2 size={16} />
@@ -474,7 +539,7 @@ const AdminAnnouncements = () => {
                             {bannerMessages.length > 0 ? (
                                 [...bannerMessages, ...bannerMessages].map((msg, i) => (
                                     <span key={i} className="text-white font-bold text-sm tracking-widest uppercase flex items-center gap-4">
-                                        {msg}
+                                        {msg.message}
                                     </span>
                                 ))
                             ) : (
@@ -513,7 +578,7 @@ const AdminAnnouncements = () => {
                                         </div>
                                         {editingItem ? "Edit Announcement" : "Draft New Announcement"}
                                     </h2>
-                                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 ml-13">ID: {editingItem?.id || 'NEW ARTICLE'}</p>
+                                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 ml-13">ID: {editingItem?._id || 'NEW ARTICLE'}</p>
                                 </div>
                                 <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors">
                                     <X size={24} />
@@ -544,7 +609,7 @@ const AdminAnnouncements = () => {
                                             >
                                                 {formData.image ? (
                                                     <>
-                                                        <img src={formData.image} alt="preview" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                                                        <img src={resolveImage(formData.image)} alt="preview" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
                                                         <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
                                                         <div className="relative bg-black/40 backdrop-blur-md px-4 py-2 rounded-full text-white text-[10px] font-bold uppercase tracking-widest shadow-xl group-hover:scale-110 transition-transform">
                                                             Change Image
@@ -565,13 +630,13 @@ const AdminAnnouncements = () => {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block ml-1">Category</label>
-                                                <select
+                                                <input
+                                                    type="text"
                                                     value={formData.category}
                                                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                                    className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-600 outline-none focus:border-[#146c43] shadow-sm cursor-pointer"
-                                                >
-                                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                                </select>
+                                                    placeholder="Category (e.g. Community)"
+                                                    className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-600 outline-none focus:border-[#146c43] shadow-sm"
+                                                />
                                             </div>
                                             <div>
                                                 <label className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block ml-1">Author</label>
@@ -755,10 +820,15 @@ const AdminAnnouncements = () => {
                                     </button>
                                     <button
                                         onClick={handleSave}
-                                        className="bg-[#146c43] text-white px-10 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-[#146c43]/20 hover:bg-[#0f5233] transition-all transform hover:-translate-y-0.5 active:scale-95"
+                                        disabled={isSaving}
+                                        className="bg-[#146c43] text-white px-10 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-[#146c43]/20 hover:bg-[#0f5233] transition-all transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
                                     >
-                                        <Save size={20} />
-                                        Save Changes
+                                        {isSaving ? (
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            <Save size={20} />
+                                        )}
+                                        {editingItem ? 'Update Post' : 'Share Story'}
                                     </button>
                                 </div>
                             </div>

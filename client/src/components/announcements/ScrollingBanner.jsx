@@ -9,19 +9,26 @@ const DEFAULT_NOTIFICATIONS = [
   "🤝 Help us reach our donation goal for the upcoming community center. 🤝"
 ];
 
+import { fetchScrollingMessages } from '../../services/api';
+
 const ScrollingBanner = () => {
     const [messages, setMessages] = useState([]);
 
     useEffect(() => {
-        const saved = localStorage.getItem('admin_scrolling_banner');
-        if (saved) {
-            const data = JSON.parse(saved);
-            if (data && data.length > 0) {
-                setMessages(data);
-                return;
-            }
+      const loadMessages = async () => {
+        try {
+          const res = await fetchScrollingMessages();
+          if (res.data && res.data.length > 0) {
+            setMessages(res.data);
+          } else {
+            setMessages(DEFAULT_NOTIFICATIONS.map(m => ({ message: m })));
+          }
+        } catch (err) {
+          console.error('Error fetching banner:', err);
+          setMessages(DEFAULT_NOTIFICATIONS.map(m => ({ message: m })));
         }
-        setMessages(DEFAULT_NOTIFICATIONS);
+      };
+      loadMessages();
     }, []);
 
   return (
@@ -35,9 +42,9 @@ const ScrollingBanner = () => {
           ease: "linear"
         }}
       >
-        {[...messages, ...messages, ...messages].map((text, i) => (
+        {[...messages, ...messages].map((msg, i) => (
           <span key={i} className="text-white/90 text-[13px] font-medium tracking-[2px] uppercase flex items-center gap-4">
-            {text}
+            {msg.message}
           </span>
         ))}
       </motion.div>
