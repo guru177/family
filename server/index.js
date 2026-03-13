@@ -24,6 +24,7 @@ app.use('/api/hero-slider', require('./routes/heroSliderRoutes'));
 app.use('/api/gallery', require('./routes/galleryRoutes'));
 app.use('/api/banners', require('./routes/bannerRoutes'));
 app.use('/api/announcements', require('./routes/announcementRoutes'));
+app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/scrolling-banner', require('./routes/scrollingBannerRoutes'));
 
 app.listen(PORT, () => {

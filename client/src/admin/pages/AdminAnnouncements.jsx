@@ -7,10 +7,10 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { 
-    fetchAnnouncements, 
-    saveAnnouncement, 
-    deleteAnnouncement, 
+import {
+    fetchAnnouncements,
+    saveAnnouncement,
+    deleteAnnouncement,
     updateAnnouncementStatus,
     fetchScrollingMessages,
     addScrollingMessage,
@@ -135,7 +135,7 @@ const AdminAnnouncements = () => {
             if (editingItem && editingItem._id) {
                 formDataToSubmit.append('id', editingItem._id);
             }
-            
+
             formDataToSubmit.append('title', formData.title);
             formDataToSubmit.append('category', formData.category);
             formDataToSubmit.append('author', formData.author);
@@ -333,7 +333,7 @@ const AdminAnnouncements = () => {
                                 placeholder="Search by title or author..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-[#146c43]/10 focus:border-[#146c43] transition-all"
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-[#146c43]/10 focus:border-[#146c43] transition-all text-black"
                             />
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
@@ -488,7 +488,7 @@ const AdminAnnouncements = () => {
                                     value={newBannerMsg}
                                     onChange={(e) => setNewBannerMsg(e.target.value)}
                                     onKeyDown={(e) => e.key === "Enter" && handleAddBanner()}
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-[#146c43]/10 focus:border-[#146c43] transition-all"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-4 py-4 text-sm font-semibold outline-none focus:ring-2 focus:ring-[#146c43]/10 focus:border-[#146c43] transition-all text-black"
                                 />
                             </div>
                             <button
@@ -567,7 +567,7 @@ const AdminAnnouncements = () => {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative bg-white w-full max-w-5xl max-h-[90vh] rounded-[32px] overflow-hidden flex flex-col shadow-2xl shadow-black/25"
+                            className="relative bg-white w-full max-w-7xl max-h-[90vh] rounded-[32px] overflow-hidden flex flex-col shadow-2xl shadow-black/25"
                         >
                             {/* Modal Header */}
                             <div className="px-8 py-6 border-b border-slate-100 shrink-0 flex items-center justify-between bg-white z-10">

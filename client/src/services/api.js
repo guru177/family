@@ -54,6 +54,17 @@ export const saveAnnouncement = (formData) => api.post('/announcements', formDat
 export const deleteAnnouncement = (id) => api.delete(`/announcements/${id}`);
 export const updateAnnouncementStatus = (id, status) => api.patch(`/announcements/${id}/status`, { status });
 
+// Event APIs
+export const fetchEvents = () => api.get('/events');
+export const fetchEventBySlug = (slug) => api.get(`/events/slug/${slug}`);
+export const saveEvent = (formData) => api.post('/events', formData, {
+  headers: {
+    'Content-Type': 'multipart/form-data'
+  }
+});
+export const deleteEvent = (id) => api.delete(`/events/${id}`);
+export const updateEventStatus = (id, status) => api.patch(`/events/${id}/status`, { status });
+
 // Scrolling Banner APIs (Text messages)
 export const fetchScrollingMessages = () => api.get('/scrolling-banner');
 export const addScrollingMessage = (message) => api.post('/scrolling-banner', { message });

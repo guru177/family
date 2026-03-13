@@ -1,80 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import EventCard from '../components/events/EventCard';
 import HeroSection from '../components/layout/HeroSection';
 import CallToAction from '../components/layout/CallToAction';
+import { fetchEvents } from '../services/api';
 
 // Example imagery
 import banner from '../assets/img/banner.jpg';
-import bg1 from '../assets/img/hero1.jpg';
-import bg2 from '../assets/img/hero2.jpg';
-import bg3 from '../assets/img/hero3.jpg';
-
-const eventsData = [
-  {
-    id: 1,
-    title: "Grand Annual Family Reunion 2026",
-    date: "July 15, 2026",
-    time: "10:00 AM - 10:00 PM",
-    location: "Heritage Resort & Gardens",
-    category: "Reunion",
-    description: "Join us for the most anticipated event of the year! We are bringing together all branches of the family for a massive celebration filled with traditional ceremonies, games, knowledge sharing, and feasts.",
-    image: bg1
-  },
-  {
-    id: 2,
-    title: "Youth Leadership Workshop",
-    date: "August 22, 2026",
-    time: "09:00 AM - 04:00 PM",
-    location: "Community Center Hall",
-    category: "Education",
-    description: "A day dedicated to empowering the next generation. Features guest speakers from within the family sharing their career journeys, leadership skills, and financial literacy basics.",
-    image: bg2
-  },
-  {
-    id: 3,
-    title: "Autumn Heritage Festival",
-    date: "October 10, 2026",
-    time: "03:00 PM - 08:00 PM",
-    location: "Westwood Park",
-    category: "Cultural",
-    description: "Celebrate our roots with authentic family recipes, storytelling sessions by our elders, and cultural performances. A perfect evening to honor our shared history.",
-    image: bg3
-  },
-  {
-    id: 4,
-    title: "Winter Charity Gala & Auction",
-    date: "December 05, 2026",
-    time: "06:00 PM - 11:30 PM",
-    location: "Grand Plaza Hotel",
-    category: "Charity",
-    description: "Our annual fundraising event to support the community education fund and emergency assistance programs. Enjoy a formal dinner, live entertainment, and charity auction.",
-    image: banner
-  },
-  {
-    id: 5,
-    title: "Spring Virtual Meet & Greet",
-    date: "April 18, 2027",
-    time: "11:00 AM - 01:00 PM",
-    location: "Online (Zoom)",
-    category: "Virtual",
-    description: "Can't make it in person? Join our biannual virtual catch-up to welcome new family members, celebrate recent milestones, and stay connected globally.",
-    image: bg2
-  },
-  {
-    id: 6,
-    title: "Founders' Memorial Service",
-    date: "May 25, 2027",
-    time: "10:00 AM - 12:00 PM",
-    location: "Family Memorial Gardens",
-    category: "Memorial",
-    description: "A solemn gathering to pay respects and remember the founding members of our modern family community, followed by a shared brunch.",
-    image: bg1
-  }
-];
 
 const Events = () => {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(6);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        const res = await fetchEvents();
+        // Only show published events, sorted by date (newest first)
+        const published = res.data
+          .filter(e => e.status === 'Published')
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
+        setEvents(published);
+      } catch (err) {
+        console.error('Error fetching events:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadEvents();
+  }, []);
 
   const handleLoadMore = () => {
     setVisibleCount(prevCount => prevCount + 6);
@@ -107,31 +62,43 @@ const Events = () => {
                 Plan Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#146c43] to-[#8eb543]">Schedule</span>
               </h2>
             </div>
-
           </div>
 
-          {/* EVENTS GRID - 3 Cards in a row on Desktop */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10 relative z-10">
-            {eventsData.slice(0, visibleCount).map((event, index) => (
-              <EventCard key={event.id} event={event} index={index} />
-            ))}
-          </div>
-
-          {visibleCount < eventsData.length && (
-            <div className="mt-16 text-center relative z-10">
-              <motion.button
-                onClick={handleLoadMore}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-white border-2 border-[#146c43] text-[#146c43] hover:bg-[#146c43] hover:text-white px-10 py-4 font-bold uppercase tracking-widest text-sm transition-all rounded-full shadow-lg"
-              >
-                Load More Events
-              </motion.button>
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <div className="w-12 h-12 border-4 border-[#146c43]/20 border-t-[#146c43] rounded-full animate-spin" />
             </div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-20 bg-white/50 backdrop-blur rounded-3xl border border-dashed border-slate-200">
+              <p className="text-slate-400 font-medium">No upcoming events at the moment. Stay tuned!</p>
+            </div>
+          ) : (
+            <>
+              {/* EVENTS GRID - 3 Cards in a row on Desktop */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10 relative z-10">
+                {events.slice(0, visibleCount).map((event, index) => (
+                  <EventCard key={event._id} event={event} index={index} />
+                ))}
+              </div>
+
+              {visibleCount < events.length && (
+                <div className="mt-16 text-center relative z-10">
+                  <motion.button
+                    onClick={handleLoadMore}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-white border-2 border-[#146c43] text-[#146c43] hover:bg-[#146c43] hover:text-white px-10 py-4 font-bold uppercase tracking-widest text-sm transition-all rounded-full shadow-lg"
+                  >
+                    Load More Events
+                  </motion.button>
+                </div>
+              )}
+            </>
           )}
 
         </div>
       </div>
+      <CallToAction />
     </div>
   );
 };

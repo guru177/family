@@ -4,6 +4,16 @@ import { Link } from 'react-router-dom';
 import { Calendar, MapPin, ArrowRight, Clock } from 'lucide-react';
 
 const EventCard = ({ event, index }) => {
+  const resolveImage = (img) => {
+    if (!img) return 'https://images.unsplash.com/photo-1526726538690-5cbf95642cb0?w=600';
+    if (typeof img === 'string' && img.startsWith('/uploads')) return `http://localhost:5000${img}`;
+    return img;
+  };
+
+  const eventDate = new Date(event.date);
+  const day = eventDate.getDate();
+  const month = eventDate.toLocaleString('default', { month: 'short' });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -16,7 +26,7 @@ const EventCard = ({ event, index }) => {
       <div className="relative w-full aspect-[4/3] overflow-hidden">
         <div className="absolute inset-0 bg-[#0a1910]/20 z-10 mix-blend-overlay group-hover:bg-transparent transition-colors duration-500" />
         <img
-          src={event.image}
+          src={resolveImage(event.image)}
           alt={event.title}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
@@ -35,8 +45,8 @@ const EventCard = ({ event, index }) => {
 
         {/* Date Badge intersecting image and content */}
         <div className="absolute -top-12 right-6 bg-[#146c43] text-white w-16 h-16 rounded-2xl flex flex-col items-center justify-center shadow-xl border-4 border-white transform group-hover:rotate-6 transition-transform duration-300">
-          <span className="text-xl font-extrabold leading-none">{event.date.split(' ')[1].replace(',', '')}</span>
-          <span className="text-[10px] font-bold uppercase tracking-widest leading-none mt-1 opacity-90">{event.date.split(' ')[0].substring(0, 3)}</span>
+          <span className="text-xl font-extrabold leading-none">{day}</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest leading-none mt-1 opacity-90">{month}</span>
         </div>
 
         <h3 className="text-2xl font-heading font-extrabold text-[#050505] mb-4 mt-2 group-hover:text-[#146c43] transition-colors line-clamp-2 leading-tight">
@@ -47,12 +57,14 @@ const EventCard = ({ event, index }) => {
         <div className="flex flex-col gap-2.5 mb-6">
           <div className="flex items-center gap-3 text-[#050505]/60 text-sm font-semibold">
             <Calendar size={16} className="text-[#b8db6e]" />
-            <span>{event.date}</span>
+            <span>{eventDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</span>
           </div>
-          <div className="flex items-center gap-3 text-[#050505]/60 text-sm font-semibold">
-            <Clock size={16} className="text-[#b8db6e]" />
-            <span>{event.time}</span>
-          </div>
+          {event.time && (
+            <div className="flex items-center gap-3 text-[#050505]/60 text-sm font-semibold">
+              <Clock size={16} className="text-[#b8db6e]" />
+              <span>{event.time}</span>
+            </div>
+          )}
           <div className="flex items-center gap-3 text-[#050505]/60 text-sm font-semibold">
             <MapPin size={16} className="text-[#b8db6e]" />
             <span className="truncate">{event.location}</span>
@@ -66,7 +78,7 @@ const EventCard = ({ event, index }) => {
         {/* Footer / CTA - Stays at bottom */}
         <div className="mt-auto pt-6 border-t border-[#146c43]/10 flex items-center justify-between">
           <Link
-            to={`/events/${event.id}`}
+            to={`/events/${event.slug}`}
             className="text-[#146c43] font-bold uppercase tracking-widest text-xs flex items-center gap-2 group/link"
           >
             Event Details
