@@ -76,3 +76,25 @@ exports.deleteSlide = async (req, res) => {
     res.status(500).json({ message: 'Server Error', error: err.message });
   }
 };
+// @desc    Reorder hero slides
+// @route   PUT /api/hero-slider/reorder
+// @access  Private/Admin
+exports.reorderSlides = async (req, res) => {
+  try {
+    const { orders } = req.body; // Array of { id, order }
+
+    if (!Array.isArray(orders)) {
+      return res.status(400).json({ message: 'Invalid orders data' });
+    }
+
+    const updatePromises = orders.map(item => 
+      HeroSlider.findByIdAndUpdate(item.id, { order: item.order })
+    );
+
+    await Promise.all(updatePromises);
+
+    res.status(200).json({ message: 'Order updated successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server Error', error: err.message });
+  }
+};

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { 
   Type, 
   ImageIcon, 
@@ -16,10 +16,11 @@ import {
   Smartphone,
   Maximize,
   X,
-  AlertCircle
+  AlertCircle,
+  GripVertical
 } from 'lucide-react';
 import HeroSlider from '../../components/layout/HeroSlider';
-import { fetchHeroSlides, saveHeroSlide } from '../../services/api';
+import { fetchHeroSlides, saveHeroSlide, deleteHeroSlide, updateHeroOrder } from '../../services/api';
 
 // Import default images to use as placeholders/defaults
 import bg1 from '../../assets/img/hero1.jpg';
@@ -118,7 +119,7 @@ const AdminHeroSlider = () => {
     setIsSaving(true);
     try {
       const formData = new FormData();
-      // Only append ID if it's a real MongoDB ID (not starting with 'new-')
+      // Only append ID if it's a real MongoDB ID
       if (typeof slide._id === 'string' && !slide._id.startsWith('new-')) {
         formData.append('id', slide._id);
       }
@@ -131,16 +132,15 @@ const AdminHeroSlider = () => {
       if (slide.file) {
         formData.append('image', slide.file);
       } else if (typeof slide.image === 'string' && !slide.image.startsWith('blob:') && !slide.image.startsWith('data:')) {
-        // If it's a server path or local asset path
         formData.append('image', slide.image);
       }
 
       await saveHeroSlide(formData);
       await loadSlides();
-      alert('Slide saved successfully!');
+      alert('Cinematic slide preserved!');
     } catch (err) {
-      console.error('Error saving slide:', err);
-      alert('Error saving slide');
+      console.error('Save error:', err);
+      alert('Error preserving slide');
     } finally {
       setIsSaving(false);
     }
@@ -173,6 +173,26 @@ const AdminHeroSlider = () => {
     };
     setSlides([...slides, newSlide]);
     setExpandedSlideId(newSlide._id);
+  };
+
+  const handleReorder = async (newOrder) => {
+    setSlides(newOrder);
+    
+    // Calculate new orders for existing slides
+    const orders = newOrder
+      .filter(slide => typeof slide._id === 'string' && !slide._id.startsWith('new-'))
+      .map((slide, index) => ({
+        id: slide._id,
+        order: index
+      }));
+
+    if (orders.length > 0) {
+      try {
+        await updateHeroOrder(orders);
+      } catch (err) {
+        console.error('Error updating order:', err);
+      }
+    }
   };
 
   return (
@@ -226,15 +246,22 @@ const AdminHeroSlider = () => {
               </button>
             </div>
 
-            <div className="space-y-4">
+            <Reorder.Group 
+              axis="y" 
+              values={slides} 
+              onReorder={handleReorder}
+              className="space-y-4"
+            >
               {isLoading ? (
                 <div className="py-20 flex flex-col items-center justify-center">
                    <div className="w-10 h-10 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mb-4" />
                    <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Loading Slides...</p>
                 </div>
               ) : slides.map((slide, index) => (
-                <div 
+                <Reorder.Item 
                   key={slide._id} 
+                  value={slide}
+                  dragListener={expandedSlideId !== slide._id}
                   className={`bg-white rounded-2xl border transition-all duration-300 ${expandedSlideId === slide._id ? 'border-emerald-200 shadow-md ring-1 ring-emerald-50' : 'border-slate-100 shadow-sm hover:border-slate-200'}`}
                 >
                   {/* Slide Header (Summary) */}
@@ -242,6 +269,9 @@ const AdminHeroSlider = () => {
                     className="flex items-center gap-4 p-4 cursor-pointer"
                     onClick={() => setExpandedSlideId(expandedSlideId === slide._id ? null : slide._id)}
                   >
+                    <div className="text-slate-300 hover:text-slate-400 cursor-grab active:cursor-grabbing p-1">
+                      <GripVertical size={20} />
+                    </div>
                     <div className="w-16 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0">
                       <img src={resolveImage(slide.image)} className="w-full h-full object-cover" alt="" />
                     </div>
@@ -352,9 +382,9 @@ const AdminHeroSlider = () => {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                </div>
+                </Reorder.Item>
               ))}
-            </div>
+            </Reorder.Group>
           </div>
         </div>
 

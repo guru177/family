@@ -207,12 +207,44 @@ const EventModal = ({ event, onClose, onSave }) => {
                                     type="file"
                                     accept="image/*"
                                     className="hidden"
-                                    onChange={(e) => {
+                                    onChange={async (e) => {
                                         const file = e.target.files[0];
-                                        if (!file) return;
-                                        const reader = new FileReader();
-                                        reader.onload = (ev) => set("image", ev.target.result);
-                                        reader.readAsDataURL(file);
+                                        if (file && file.type.startsWith('image/')) {
+                                            const convertToWebP = (file) => {
+                                                return new Promise((resolve, reject) => {
+                                                    const reader = new FileReader();
+                                                    reader.readAsDataURL(file);
+                                                    reader.onload = (event) => {
+                                                        const img = new Image();
+                                                        img.src = event.target.result;
+                                                        img.onload = () => {
+                                                            const canvas = document.createElement('canvas');
+                                                            canvas.width = img.width;
+                                                            canvas.height = img.height;
+                                                            const ctx = canvas.getContext('2d');
+                                                            ctx.drawImage(img, 0, 0);
+                                                            canvas.toBlob((blob) => {
+                                                                const readerWebp = new FileReader();
+                                                                readerWebp.onloadend = () => {
+                                                                    resolve(readerWebp.result);
+                                                                };
+                                                                readerWebp.readAsDataURL(blob);
+                                                            }, 'image/webp', 0.8);
+                                                        };
+                                                        img.onerror = (err) => reject(err);
+                                                    };
+                                                    reader.onerror = (err) => reject(err);
+                                                });
+                                            };
+
+                                            try {
+                                                const webpBase64 = await convertToWebP(file);
+                                                set("image", webpBase64);
+                                            } catch (err) {
+                                                console.error('Conversion error:', err);
+                                                alert('Error processing image');
+                                            }
+                                        }
                                     }}
                                 />
                             </label>

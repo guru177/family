@@ -136,14 +136,43 @@ const AdminAnnouncements = () => {
         setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
     };
 
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
+    const convertToWebP = (file) => {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, image: reader.result }));
-            };
             reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    canvas.toBlob((blob) => {
+                        const readerWebp = new FileReader();
+                        readerWebp.onloadend = () => {
+                            resolve(readerWebp.result);
+                        };
+                        readerWebp.readAsDataURL(blob);
+                    }, 'image/webp', 0.8);
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
+    };
+
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            try {
+                const webpBase64 = await convertToWebP(file);
+                setFormData(prev => ({ ...prev, image: webpBase64 }));
+            } catch (err) {
+                console.error('Conversion error:', err);
+                alert('Error processing image');
+            }
         }
     };
 

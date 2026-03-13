@@ -17,6 +17,7 @@ export const saveHeroSlide = (formData) => api.post('/hero-slider', formData, {
   }
 });
 export const deleteHeroSlide = (id) => api.delete(`/hero-slider/${id}`);
+export const updateHeroOrder = (orders) => api.put('/hero-slider/reorder', { orders });
 
 // Gallery APIs
 export const fetchGalleryItems = () => api.get('/gallery');
