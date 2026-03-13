@@ -1,0 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-heading: "Outfit", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --color-glass-border: rgba(255, 255, 255, 0.2);
+  --spacing-9xl: 120rem; /* Custom max-w-9xl approx 1920px */
+}
+
+@layer base {
+  body {
+    @apply font-body bg-black text-white overflow-x-hidden;
+  }
+}

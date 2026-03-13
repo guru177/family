@@ -1,0 +1,86 @@
+﻿
+> client@0.0.0 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+node.exe : Found 1 
+warning while 
+optimizing generated 
+CSS:
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (Found 1 warni   
+ ng... generated CS    
+S::String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+
+[2mΓöé   }[22m
+[2mΓöé }[22m
+[2mΓöé[22m @import ur
+l('https://fonts.google
+apis.com/css2?family=In
+ter:wght@400;500;600;70
+0&family=Outfit:wght@40
+0;700;800&display=swap'
+);
+[2mΓöå[22m        
+[33m[2m^--[22m 
+@import rules must 
+precede all rules 
+aside from @charset 
+and @layer 
+statements[39m
+[2mΓöå[22m
+[2mΓöé @layer base 
+{[22m
+[2mΓöé   body {[22m
+
+[32mΓ£ô[39m 15 modules transformed.
+[31mΓ£ù[39m Build 
+failed in 223ms
+[31merror during 
+build:
+[31mCould not resolve 
+"./components/Footer" 
+from "src/App.jsx"[31m
+file: [36mC:/Users/ASU
+S/Music/family/client/s
+rc/App.jsx[31m
+    at getRollupError (
+file:///C:/Users/ASUS/M
+usic/family/client/node
+_modules/rollup/dist/es
+/shared/parseAst.js:402
+:41)
+    at error (file:///C
+:/Users/ASUS/Music/fami
+ly/client/node_modules/
+rollup/dist/es/shared/p
+arseAst.js:398:42)
+    at ModuleLoader.han
+dleInvalidResolvedId (f
+ile:///C:/Users/ASUS/Mu
+sic/family/client/node_
+modules/rollup/dist/es/
+shared/node-entry.js:21
+710:24)
+    at file:///C:/Users
+/ASUS/Music/family/clie
+nt/node_modules/rollup/
+dist/es/shared/node-ent
+ry.js:21670:26[39m
