@@ -28,25 +28,51 @@ const AdminBanners = () => {
     }
   };
 
+  const convertToWebP = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((blob) => {
+            const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+              type: 'image/webp',
+              lastModified: Date.now()
+            });
+            resolve(webpFile);
+          }, 'image/webp', 0.8);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.type.startsWith('image/')) {
-        setIsSaving(true);
-        try {
-          const formData = new FormData();
-          formData.append('image', file);
-          await createBanner(formData);
-          await loadBanners(); // Refresh list
-        } catch (err) {
-          console.error('Error uploading banner:', err);
-          alert('Error uploading banner');
-        } finally {
-          setIsSaving(false);
-        }
-      } else {
-        alert('Please select an image file (PNG, JPG, etc.)');
+    if (file && file.type.startsWith('image/')) {
+      setIsSaving(true);
+      try {
+        const webpFile = await convertToWebP(file);
+        const formData = new FormData();
+        formData.append('image', webpFile);
+        await createBanner(formData);
+        await loadBanners(); // Refresh list
+      } catch (err) {
+        console.error('Error uploading banner:', err);
+        alert('Error uploading banner');
+      } finally {
+        setIsSaving(false);
       }
+    } else if (file) {
+      alert('Please select an image file (PNG, JPG, etc.)');
     }
   };
 

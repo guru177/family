@@ -53,24 +53,63 @@ const AdminGallery = () => {
     ));
   };
 
+  const convertToWebP = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((blob) => {
+            const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+              type: 'image/webp',
+              lastModified: Date.now()
+            });
+            resolve(webpFile);
+          }, 'image/webp', 0.8);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const handleImageUpload = async (id, e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
-      const imageUrl = URL.createObjectURL(file);
-      setGalleryItems(galleryItems.map(item => 
-        item._id === id ? { ...item, src: imageUrl, file, isModified: true } : item
-      ));
+      try {
+        const webpFile = await convertToWebP(file);
+        const imageUrl = URL.createObjectURL(webpFile);
+        setGalleryItems(galleryItems.map(item => 
+          item._id === id ? { ...item, src: imageUrl, file: webpFile, isModified: true } : item
+        ));
+      } catch (err) {
+        console.error('Conversion error:', err);
+        alert('Error processing image');
+      }
     }
   };
 
-  const handleAddImageInModal = (e) => {
+  const handleAddImageInModal = async (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
-      setNewItem({
-        ...newItem,
-        file,
-        preview: URL.createObjectURL(file)
-      });
+      try {
+        const webpFile = await convertToWebP(file);
+        setNewItem({
+          ...newItem,
+          file: webpFile,
+          preview: URL.createObjectURL(webpFile)
+        });
+      } catch (err) {
+        console.error('Conversion error:', err);
+        alert('Error processing image');
+      }
     }
   };
 

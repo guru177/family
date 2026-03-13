@@ -9,6 +9,15 @@ const api = axios.create({
   }
 });
 
+// Hero Slider APIs
+export const fetchHeroSlides = () => api.get('/hero-slider');
+export const saveHeroSlide = (formData) => api.post('/hero-slider', formData, {
+  headers: {
+    'Content-Type': 'multipart/form-data'
+  }
+});
+export const deleteHeroSlide = (id) => api.delete(`/hero-slider/${id}`);
+
 // Gallery APIs
 export const fetchGalleryItems = () => api.get('/gallery');
 export const createGalleryItem = (formData) => api.post('/gallery', formData, {

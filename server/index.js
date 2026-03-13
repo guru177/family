@@ -20,6 +20,7 @@ app.get('/', (req, res) => {
 });
 
 // Routes
+app.use('/api/hero-slider', require('./routes/heroSliderRoutes'));
 app.use('/api/gallery', require('./routes/galleryRoutes'));
 app.use('/api/banners', require('./routes/bannerRoutes'));
 

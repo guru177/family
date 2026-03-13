@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Type, 
   ImageIcon, 
+  Plus,
+  Trash2,
   Save, 
   Play, 
   Settings, 
@@ -13,9 +15,11 @@ import {
   Monitor,
   Smartphone,
   Maximize,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
 import HeroSlider from '../../components/layout/HeroSlider';
+import { fetchHeroSlides, saveHeroSlide } from '../../services/api';
 
 // Import default images to use as placeholders/defaults
 import bg1 from '../../assets/img/hero1.jpg';
@@ -23,59 +27,152 @@ import bg2 from '../../assets/img/hero2.jpg';
 import bg3 from '../../assets/img/hero3.jpg';
 
 const AdminHeroSlider = () => {
-  const [slides, setSlides] = useState([
-    {
-      id: 1,
-      title: "Family Reunion",
-      subtitle: "Connect",
-      description: "Celebrate our heritage and create lasting memories at our annual family gathering. A time to bond, share stories, and grow together.",
-      image: bg1,
-    },
-    {
-      id: 2,
-      title: "Community Impact",
-      subtitle: "Purpose",
-      description: "Join hands as we support each other through our community initiatives. Together, we build a stronger and more vibrant future for everyone.",
-      image: bg2,
-    },
-    {
-      id: 3,
-      title: "Honoring Legacy",
-      subtitle: "History",
-      description: "Remember the roots that keep us grounded. Discover the journey of our ancestors and the timeless values that define us today.",
-      image: bg3,
-    }
-  ]);
-
+  const [slides, setSlides] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [autoPlayInterval, setAutoPlayInterval] = useState(8000);
   const [isSaving, setIsSaving] = useState(false);
-  const [expandedSlideId, setExpandedSlideId] = useState(1);
-  const [previewMode, setPreviewMode] = useState('desktop'); // 'desktop' or 'mobile'
+  const [expandedSlideId, setExpandedSlideId] = useState(null);
+  const [previewMode, setPreviewMode] = useState('desktop'); 
   const [isFullView, setIsFullView] = useState(false);
+
+  useEffect(() => {
+    loadSlides();
+  }, []);
+
+  const loadSlides = async () => {
+    try {
+      const { data } = await fetchHeroSlides();
+      setSlides(data);
+      if (data.length > 0 && !expandedSlideId) {
+        setExpandedSlideId(data[0]._id);
+      }
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error loading slides:', err);
+      setIsLoading(false);
+    }
+  };
+
+  const resolveImage = (img) => {
+    if (!img) return bg1;
+    if (typeof img === 'string' && img.startsWith('/uploads')) return `http://localhost:5000${img}`;
+    return img;
+  };
+
+  const convertToWebP = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((blob) => {
+            const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+              type: 'image/webp',
+              lastModified: Date.now()
+            });
+            resolve(webpFile);
+          }, 'image/webp', 0.8);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
 
   const handleSlideChange = (id, field, value) => {
     setSlides(slides.map(slide => 
-      slide.id === id ? { ...slide, [field]: value } : slide
+      slide._id === id ? { ...slide, [field]: value } : slide
     ));
   };
 
-  const handleImageUpload = (id, e) => {
+  const handleImageUpload = async (id, e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
-      const imageUrl = URL.createObjectURL(file);
-      handleSlideChange(id, 'image', imageUrl);
+       setIsSaving(true);
+       try {
+         const webpFile = await convertToWebP(file);
+         const imageUrl = URL.createObjectURL(webpFile);
+         setSlides(slides.map(slide => 
+           slide._id === id ? { ...slide, image: imageUrl, file: webpFile } : slide
+         ));
+       } catch (err) {
+         console.error('Error converting image:', err);
+         alert('Error processing image');
+       } finally {
+         setIsSaving(false);
+       }
     }
   };
 
-  // handleAddSlide and handleRemoveSlide removed as per requirement
+  const handleSaveIndividual = async (id) => {
+    const slide = slides.find(s => s._id === id);
+    if (!slide) return;
 
-  const handleSave = () => {
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const formData = new FormData();
+      // Only append ID if it's a real MongoDB ID (not starting with 'new-')
+      if (typeof slide._id === 'string' && !slide._id.startsWith('new-')) {
+        formData.append('id', slide._id);
+      }
+      
+      formData.append('title', slide.title);
+      formData.append('subtitle', slide.subtitle);
+      formData.append('description', slide.description);
+      formData.append('order', slide.order);
+      
+      if (slide.file) {
+        formData.append('image', slide.file);
+      } else if (typeof slide.image === 'string' && !slide.image.startsWith('blob:') && !slide.image.startsWith('data:')) {
+        // If it's a server path or local asset path
+        formData.append('image', slide.image);
+      }
+
+      await saveHeroSlide(formData);
+      await loadSlides();
+      alert('Slide saved successfully!');
+    } catch (err) {
+      console.error('Error saving slide:', err);
+      alert('Error saving slide');
+    } finally {
       setIsSaving(false);
-      alert('Hero Slider settings saved successfully! (Frontend only demo)');
-    }, 1000);
+    }
+  };
+
+  const handleDeleteSlide = async (id) => {
+    if (typeof id === 'string' && id.startsWith('new-')) {
+      setSlides(slides.filter(s => s._id !== id));
+      return;
+    }
+    if (!window.confirm('Are you sure you want to delete this slide?')) return;
+    try {
+      await deleteHeroSlide(id);
+      await loadSlides();
+    } catch (err) {
+      console.error('Error deleting slide:', err);
+      alert('Error deleting slide');
+    }
+  };
+
+  const handleAddSlide = () => {
+    const newSlide = {
+      _id: 'new-' + Date.now(),
+      title: 'NEW SLIDE',
+      subtitle: 'NEW',
+      description: 'Slide description goes here...',
+      image: bg1,
+      order: slides.length,
+      isNew: true
+    };
+    setSlides([...slides, newSlide]);
+    setExpandedSlideId(newSlide._id);
   };
 
   return (
@@ -86,18 +183,6 @@ const AdminHeroSlider = () => {
           <h1 className="text-3xl font-extrabold text-slate-800">Hero Slider Management</h1>
           <p className="text-slate-400 mt-1 text-sm">Customize the homepage cinematic slider, text content, and animations</p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0f3d2e] text-white font-bold hover:bg-[#1a6348] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/10"
-        >
-          {isSaving ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <Save size={18} />
-          )}
-          {isSaving ? 'Saving...' : 'Save Changes'}
-        </button>
       </div>
 
       <div className="grid grid-cols-1 2xl:grid-cols-5 gap-6">
@@ -133,34 +218,45 @@ const AdminHeroSlider = () => {
                 <Layout size={18} className="text-emerald-600" />
                 Slides ({slides.length})
               </h2>
+              <button
+                onClick={handleAddSlide}
+                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs hover:bg-emerald-100 transition-all"
+              >
+                <Plus size={14} /> Add New
+              </button>
             </div>
 
             <div className="space-y-4">
-              {slides.map((slide, index) => (
+              {isLoading ? (
+                <div className="py-20 flex flex-col items-center justify-center">
+                   <div className="w-10 h-10 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mb-4" />
+                   <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Loading Slides...</p>
+                </div>
+              ) : slides.map((slide, index) => (
                 <div 
-                  key={slide.id} 
-                  className={`bg-white rounded-2xl border transition-all duration-300 ${expandedSlideId === slide.id ? 'border-emerald-200 shadow-md ring-1 ring-emerald-50' : 'border-slate-100 shadow-sm hover:border-slate-200'}`}
+                  key={slide._id} 
+                  className={`bg-white rounded-2xl border transition-all duration-300 ${expandedSlideId === slide._id ? 'border-emerald-200 shadow-md ring-1 ring-emerald-50' : 'border-slate-100 shadow-sm hover:border-slate-200'}`}
                 >
                   {/* Slide Header (Summary) */}
                   <div 
                     className="flex items-center gap-4 p-4 cursor-pointer"
-                    onClick={() => setExpandedSlideId(expandedSlideId === slide.id ? null : slide.id)}
+                    onClick={() => setExpandedSlideId(expandedSlideId === slide._id ? null : slide._id)}
                   >
                     <div className="w-16 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0">
-                      <img src={slide.image} className="w-full h-full object-cover" alt="" />
+                      <img src={resolveImage(slide.image)} className="w-full h-full object-cover" alt="" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest leading-none mb-1">Slide {index + 1}</p>
                       <h3 className="font-bold text-slate-700 truncate text-sm">{slide.title}</h3>
                     </div>
                     <div className="flex items-center gap-2">
-                      {expandedSlideId === slide.id ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+                      {expandedSlideId === slide._id ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
                     </div>
                   </div>
 
                   {/* Expanded Content */}
                   <AnimatePresence>
-                    {expandedSlideId === slide.id && (
+                    {expandedSlideId === slide._id && (
                       <motion.div 
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
@@ -173,11 +269,11 @@ const AdminHeroSlider = () => {
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Slide Image</label>
                             <div className="relative group">
                               <div className="w-full h-40 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 relative">
-                                <img src={slide.image} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt="Slide preview" />
+                                <img src={resolveImage(slide.image)} className="w-full h-full object-cover transition-transform group-hover:scale-105" alt="Slide preview" />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                   <label className="cursor-pointer bg-white text-slate-800 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 hover:bg-[#b8db6e] transition-colors">
                                     <Upload size={14} /> Change Image
-                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(slide.id, e)} />
+                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(slide._id, e)} />
                                   </label>
                                 </div>
                               </div>
@@ -194,7 +290,7 @@ const AdminHeroSlider = () => {
                               <input 
                                 type="text"
                                 value={slide.subtitle}
-                                onChange={(e) => handleSlideChange(slide.id, 'subtitle', e.target.value)}
+                                onChange={(e) => handleSlideChange(slide._id, 'subtitle', e.target.value)}
                                 className="flex-1 bg-transparent py-2.5 outline-none text-sm font-bold text-slate-600"
                                 placeholder="Subtitle (History, Connect, etc.)"
                               />
@@ -211,7 +307,7 @@ const AdminHeroSlider = () => {
                               <input 
                                 type="text"
                                 value={slide.title}
-                                onChange={(e) => handleSlideChange(slide.id, 'title', e.target.value)}
+                                onChange={(e) => handleSlideChange(slide._id, 'title', e.target.value)}
                                 className="flex-1 bg-transparent py-2.5 outline-none text-sm font-bold text-slate-600 uppercase"
                                 placeholder="Main Cinematic Title"
                               />
@@ -224,11 +320,33 @@ const AdminHeroSlider = () => {
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Description</label>
                             <textarea 
                               value={slide.description}
-                              onChange={(e) => handleSlideChange(slide.id, 'description', e.target.value)}
+                              onChange={(e) => handleSlideChange(slide._id, 'description', e.target.value)}
                               rows={3}
                               className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 outline-none text-sm font-medium text-slate-500 focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none"
                               placeholder="Brief description of the slide content..."
                             />
+                          </div>
+
+                          {/* Individual Save/Delete */}
+                          <div className="flex gap-2">
+                             <button
+                               onClick={() => handleSaveIndividual(slide._id)}
+                               disabled={isSaving}
+                               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0f3d2e] text-white rounded-xl font-bold text-xs hover:bg-[#1a6348] transition-all disabled:opacity-50"
+                             >
+                               {isSaving ? (
+                                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                               ) : (
+                                 <Save size={14} />
+                               )}
+                               Save Slide
+                             </button>
+                             <button
+                               onClick={() => handleDeleteSlide(slide._id)}
+                               className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                             >
+                               <Trash2 size={18} />
+                             </button>
                           </div>
                         </div>
                       </motion.div>

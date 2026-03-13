@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useInView, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Facebook, ArrowRight, Youtube } from 'lucide-react';
 import ScrollingBanner from '../announcements/ScrollingBanner';
+import { fetchHeroSlides } from '../../services/api';
 
 // Move image imports to local component or pass as props if reusable
 import bg1 from '../../assets/img/hero1.jpg';
@@ -68,15 +69,40 @@ const sliderDataDefault = [
   }
 ];
 
-const HeroSlider = ({ sliderData = sliderDataDefault, autoPlayInterval = 8000, forceMobile = false }) => {
+const HeroSlider = ({ sliderData: pSliderData, autoPlayInterval = 8000, forceMobile = false }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [internalSlides, setInternalSlides] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!pSliderData) {
+      const loadSlides = async () => {
+        setIsLoading(true);
+        try {
+          const { data } = await fetchHeroSlides();
+          setInternalSlides(data);
+          setIsLoading(false);
+        } catch (err) {
+          console.error('Error loading hero slides:', err);
+          setIsLoading(false);
+        }
+      };
+      loadSlides();
+    }
+  }, [pSliderData]);
+
+  const sliderData = pSliderData || (internalSlides.length > 0 ? internalSlides : sliderDataDefault);
 
   useEffect(() => {
     // Reset index if data changes to avoid out of bounds
-    setCurrentIndex(0);
+    if (sliderData.length > 0) {
+      setCurrentIndex(0);
+    }
   }, [sliderData.length]);
 
   useEffect(() => {
+    if (sliderData.length === 0) return;
+    
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % sliderData.length);
     }, autoPlayInterval);
@@ -86,18 +112,27 @@ const HeroSlider = ({ sliderData = sliderDataDefault, autoPlayInterval = 8000, f
 
   const currentSlide = sliderData[currentIndex] || sliderData[0];
 
+  if (isLoading) return <div className="h-screen w-full bg-[#050505] flex items-center justify-center"><div className="w-12 h-12 border-4 border-white/10 border-t-white rounded-full animate-spin" /></div>;
+  if (!currentSlide) return null;
+
+  const resolveImage = (img) => {
+    if (!img) return bg1;
+    if (typeof img === 'string' && img.startsWith('/uploads')) return `http://localhost:5000${img}`;
+    return img;
+  };
+
   return (
     <div className="relative h-screen w-full overflow-hidden group">
         <AnimatePresence mode='wait'>
           <motion.div
-            key={currentSlide.id}
+            key={currentSlide._id || currentSlide.id}
             initial={{ opacity: 0, scale: 1.1 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1.5 }}
             className="absolute inset-0 w-full h-full"
           >
-            <img src={currentSlide.image} alt={currentSlide.title} className="w-full h-full object-cover" />
+            <img src={resolveImage(currentSlide.image)} alt={currentSlide.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/60" />
           </motion.div>
         </AnimatePresence>
@@ -113,7 +148,7 @@ const HeroSlider = ({ sliderData = sliderDataDefault, autoPlayInterval = 8000, f
         {/* Hero Content */}
         <div className={`absolute ${forceMobile ? 'top-[45%] left-[5%] max-w-[90%]' : 'top-[45%] md:top-1/2 left-[5%] md:left-[10%] max-w-[90%] md:max-w-[600px]'} -translate-y-1/2 z-10`}>
           <motion.div
-            key={`content-${currentSlide.id}`}
+            key={`content-${currentSlide._id || currentSlide.id}`}
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
@@ -138,11 +173,11 @@ const HeroSlider = ({ sliderData = sliderDataDefault, autoPlayInterval = 8000, f
         <div className={`${forceMobile ? 'hidden' : 'hidden md:flex'} absolute bottom-[15%] right-[10%] gap-4 z-20`}>
           {sliderData.map((item, index) => (
             <div
-              key={`thumb-${item.id}`}
+              key={`thumb-${item._id || item.id}`}
               className={`w-32 h-44 rounded-xl overflow-hidden cursor-pointer transition-all duration-500 border-2 ${index === currentIndex ? 'border-white -translate-y-3 scale-105' : 'border-transparent opacity-60 hover:opacity-100'}`}
               onClick={() => setCurrentIndex(index)}
             >
-              <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+              <img src={resolveImage(item.image)} alt={item.title} className="w-full h-full object-cover" />
             </div>
           ))}
         </div>
